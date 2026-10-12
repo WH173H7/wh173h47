@@ -1,8 +1,8 @@
-# PyShield
+# wh173h47
 
 **Network Security and Defensive Monitoring System**
 
-PyShield is a Python-based defensive security project for controlled training and demonstration. It combines a configurable rule engine, local connection monitoring, event logging, simple repeated-connection detection, and operating-system firewall command previews.
+wh173h47 is a Python-based defensive security project for controlled training and demonstration. It combines a configurable rule engine, local connection monitoring, event logging, simple repeated-connection detection, and operating-system firewall command previews.
 
 ## Safety model
 
