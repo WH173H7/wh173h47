@@ -1,12 +1,13 @@
-from __future__ import annotations
 import argparse
 import json
 import time
 from pathlib import Path
 
 from pyshield.detector import BurstDetector
+from pyshield.discovery import DiscoveryError, discover
 from pyshield.firewall import plan_block
 from pyshield.monitor import scan_once
+from pyshield.router import RouterError, fetch_station_info, merge_router_macs
 from pyshield.rules import evaluate, load_rules
 
 ROOT = Path(__file__).resolve().parent
@@ -41,6 +42,46 @@ def cmd_monitor(interval, count):
             time.sleep(interval)
 
 
+def cmd_discover(probe=False, router=False):
+    try:
+        info, devices = discover(probe=probe)
+    except DiscoveryError as exc:
+        print(f"Discovery error: {exc}")
+        return 1
+
+    router_stations = None
+    if router:
+        if not info.gateway:
+            print("Router telemetry: unavailable (no gateway detected)")
+        else:
+            try:
+                router_stations = fetch_station_info(info.gateway)
+                devices = merge_router_macs(devices, router_stations)
+                print(f"Router telemetry: MF935 station list ({len(router_stations.normalized_macs)} reported)")
+            except RouterError as exc:
+                print(f"Router telemetry: unavailable ({exc})")
+
+    print("WH173H47 NETWORK DISCOVERY")
+    print(f"Interface: {info.interface}")
+    print(f"Local IP:  {info.local_ip}")
+    print(f"Gateway:   {info.gateway or '-'}")
+    print(f"Subnet:    {info.subnet}")
+    print("\nDEVICES")
+    print("IP              MAC                SOURCE   HOSTNAME")
+    print("-" * 72)
+    for device in devices:
+        print(
+            f"{device.ip:<15} "
+            f"{(device.mac or '-'):18} "
+            f"{device.source:<8} "
+            f"{device.hostname or '-'}"
+        )
+    print(f"\nTotal devices: {len(devices)}")
+    if router_stations is not None:
+        print(f"Router-reported stations: {len(router_stations.normalized_macs)}")
+    return 0
+
+
 def cmd_demo():
     rules = load_rules(str(RULES))
     samples = [
@@ -64,6 +105,9 @@ def main():
     parser = argparse.ArgumentParser(description="PyShield - Network Security and Defensive Monitoring System")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("rules", help="List configured rules")
+    p = sub.add_parser("discover", help="Discover devices on the local private network")
+    p.add_argument("--probe", action="store_true", help="Ping hosts in the detected subnet before reading ARP")
+    p.add_argument("--router", action="store_true", help="Read connected-station metadata from a supported local router")
     p = sub.add_parser("check", help="Evaluate one connection against rules")
     p.add_argument("ip"); p.add_argument("port", type=int); p.add_argument("protocol", nargs="?", default="TCP")
     p = sub.add_parser("monitor", help="Observe local network connections")
@@ -73,6 +117,7 @@ def main():
     p.add_argument("ip")
     args = parser.parse_args()
     if args.command == "rules": cmd_rules()
+    elif args.command == "discover": return cmd_discover(args.probe, args.router)
     elif args.command == "check": cmd_check(args.ip, args.port, args.protocol)
     elif args.command == "monitor": cmd_monitor(args.interval, args.count)
     elif args.command == "demo": cmd_demo()
