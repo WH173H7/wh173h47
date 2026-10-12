@@ -1,0 +1,18 @@
+{
+  "default_action": "ALLOW",
+  "rules": [
+    {
+      "name": "block-demo-address",
+      "action": "BLOCK",
+      "ip": "203.0.113.25",
+      "description": "Documentation-only test address used for safe rule-engine demonstrations."
+    },
+    {
+      "name": "log-ssh",
+      "action": "LOG",
+      "port": 22,
+      "protocol": "TCP",
+      "description": "Record SSH connection observations for review."
+    }
+  ]
+}
